@@ -24,7 +24,7 @@ help() {
     
     -h| --help                               Display help information.
     -f| --file <path_to_file>                Specify path to file, a list of IPs to test.
-    -p| --ports <num1[ num2 num3 ...]>       Specify port(s) to test with each IP. No commas. Space-delimited only.
+    -p| --ports <num1[,num2,num3...]>        Specify port(s) to test with each IP, comma-delimited.
     
     Example:
     ./firewall-verify.sh -f /tmp/ip-source-list.txt -p 443 8443
@@ -42,12 +42,12 @@ help() {
        10.72.7.185
        etc (and the user can manually specify the port(s) when calling the script)
        
-    If you use options 1 or 2, then you should not manually specify the port(s) with the -p parameter flag.
+    If you use options 1 or 2, then you should NOT manually specify the port(s) with the -p parameter flag.
     Options 1 and 2 are convenient if you want a mix of some IPs with certain ports, and some IPs with other certain ports.
     Your file must have consistent format throughout the file. E.g., the first half of the file cannot be of format type 1,
     and second half be of format type 2.
     
-    You IPs can also be specified with CIDR notation; some examples:
+    Your IPs can also be specified with CIDR notation; some examples:
     10.72.7.0/24 PORT 443
     10.72.7.0/24:443
     10.72.7.0/24
@@ -122,12 +122,13 @@ done
 testendpoint() {
     # Use nmap to check the endpoint!
     # First arg is the port or comma-separated list of ports, second arg is the IP
-    /usr/bin/nmap --script ssl-enum-ciphers -p $1 $2 -Pn | grep -v "PORT" | egrep "open"
-    if [ $? -eq 1 ]
-    then
-        #printf "${RED} Problem with endpoint $theip port(s) $theports: Could not connect ${NC} \n\n"
-        printf "OHNO! Problem with endpoint $theip port(s) $theports: Could not connect\n\n"
+    /usr/bin/nmap -p $1 $2 -Pn | egrep "closed|filtered|down"
+    
+    if [ $? -eq 0 ]; then
+        thehostname=`host $2 | awk '{print $5}'`
+        echo -e "$2 $thehostname\n\n"
     fi
+    
 }
 
 
@@ -147,9 +148,10 @@ if ! which nmap > /dev/null; then
     fi
 fi
 
-echo -e "\nMy subnet information:"
-/sbin/ifconfig | grep "Mask"
-echo -e "\n"
+echo -e "\nMy network adapter(s) config information:"
+/sbin/ifconfig | grep "Mask" | grep -v "127.0.0.1"
+
+echo -e "\nnmap legend: closed - endpoint isn't listening; filtered - firewall is blocking; down - no route to host, no ICMP, or host is down.\n\n"
 
 ## Now go through each line of the specified file
 while read line
@@ -193,3 +195,4 @@ done < $filepath
 
 
 exit 0
+
