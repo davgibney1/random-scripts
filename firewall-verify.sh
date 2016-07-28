@@ -122,8 +122,8 @@ done
 testendpoint() {
     # Use nmap to check the endpoint!
     # First arg is the port or comma-separated list of ports, second arg is the IP
-    /usr/bin/nmap --script ssl-enum-ciphers -p $1 $2 -Pn | egrep "closed|down" -B3 | grep -v "PORT"
-    if [ $? -eq 0 ]
+    /usr/bin/nmap --script ssl-enum-ciphers -p $1 $2 -Pn | grep -v "PORT" | egrep "open"
+    if [ $? -eq 1 ]
     then
         #printf "${RED} Problem with endpoint $theip port(s) $theports: Could not connect ${NC} \n\n"
         printf "OHNO! Problem with endpoint $theip port(s) $theports: Could not connect\n\n"
